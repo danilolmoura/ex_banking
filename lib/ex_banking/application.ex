@@ -8,13 +8,14 @@ defmodule ExBanking.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {ExBanking, %{}}
       # Starts a worker by calling: ExBanking.Worker.start_link(arg)
       # {ExBanking.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: ExBanking.Supervisor]
+    opts = [strategy: :one_for_all, name: ExBanking.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end
