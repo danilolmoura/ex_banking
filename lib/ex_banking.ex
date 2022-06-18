@@ -7,10 +7,15 @@ defmodule ExBanking do
 
   # Client
 
-  def start_link(state) do
-    GenServer.start_link(__MODULE__, state, name: __MODULE__)
-  end
+  @doc """
+  Starts the ex_banking with the given options.
 
+  `:name` is always required.
+  """
+  def start_link(opts) do
+    server = Keyword.fetch!(opts, :name)
+    GenServer.start_link(__MODULE__, server, opts)
+  end
 
   @spec create_user(user :: String.t) :: :ok | {:error, :wrong_arguments | :user_already_exists}
   def create_user(user) do
@@ -18,10 +23,11 @@ defmodule ExBanking do
   end
 
   # Server (callbacks)
-
   @impl true
-  def init(users) do
-    {:ok, users}
+  def init(table) do
+    names = :ets.new(table, [:named_table])
+    refs  = %{}
+    {:ok, {names, refs}}
   end
 
   @impl true
