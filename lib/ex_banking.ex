@@ -5,7 +5,7 @@ defmodule ExBanking do
 
   use GenServer
 
-  # Client
+  ### Client API / Helper functions
 
   @doc """
   Starts the ex_banking with the given options.
@@ -18,22 +18,48 @@ defmodule ExBanking do
   end
 
   @spec create_user(user :: String.t) :: :ok | {:error, :wrong_arguments | :user_already_exists}
-  def create_user(user) do
-    GenServer.call(__MODULE__, {:create_user, user})
+  def create_user(user) when is_binary(user) do
+    case GenServer.call(:user_lookup, {:create_user, user}) do
+      :ok -> :ok
+      :user_already_exists -> {:error, :user_already_exists}
+    end
   end
 
-  # Server (callbacks)
+  def create_user(_), do: {:error, :wrong_arguments}
+
+  defp lookup(table, user) do
+    case :ets.lookup(table, user) do
+      [{^user}] -> {:ok, user}
+      [] -> :error
+    end
+  end
+
+  defp insert(table, user) do
+    case :ets.insert(table, {user}) do
+      true -> true
+      error -> error
+    end
+  end
+
+  ### GenServer API
   @impl true
   def init(table) do
-    names = :ets.new(table, [:named_table])
+    user_table = :ets.new(table, [:set, :protected, :named_table, read_concurrency: true])
     refs  = %{}
-    {:ok, {names, refs}}
+    {:ok, {user_table, refs}}
   end
 
   @impl true
-  def handle_call({:create_user, user}, from, state) do
-    IO.inspect(user, label: "1")
-    IO.inspect(from, label: "2")
-    IO.inspect(state, label: "3")
+  def handle_call({:create_user, user}, _from, {user_table, refs}) do
+    case lookup(user_table, user) do
+      {:ok, _user} ->
+        {:reply, :user_already_exists, {user_table, refs}}
+      :error ->
+        case insert(user_table, user) do
+          true -> {:reply, :ok, {user_table, refs}}
+          _ -> IO.inspect("TODO: Check for some other errors")
+            {:reply, :error, {user_table, refs}}
+        end
+    end
   end
 end
