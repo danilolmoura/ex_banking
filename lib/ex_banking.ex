@@ -40,6 +40,16 @@ defmodule ExBanking do
 
   def deposit(_, _, _), do: {:error, :wrong_arguments}
 
+  @spec withdraw(user :: String.t, amount :: number, currency :: String.t) :: {:ok, new_balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :not_enough_money | :too_many_requests_to_user}
+  def withdraw(user, amount, currency) when validate_params(user, amount, currency) do
+    case GenServer.call(:user_lookup, {:deposit, user, amount, currency}) do
+      {:ok, new_balance} -> {:ok, new_balance}
+      :user_does_not_exist -> {:error, :user_does_not_exist}
+    end
+  end
+
+  def withdraw(_, _, _), do: {:error, :wrong_arguments}
+
   defp lookup(table, user) do
     case :ets.lookup(table, user) do
       [{^user}] -> {:ok, user}

@@ -17,7 +17,7 @@ defmodule ExBankingTest do
   end
 
   test "deposit" do
-    username = "user"
+    username = "user deposit"
     amount = 100.01
     currency = "real"
 
@@ -35,8 +35,41 @@ defmodule ExBankingTest do
     assert ExBanking.deposit("danilo", -1.0, "real") == {:error, :wrong_arguments}
     assert ExBanking.deposit("danilo", 10.0, 1) == {:error, :wrong_arguments}
 
-    username2 = "other user"
+    username2 = "user deposit 2"
     assert ExBanking.create_user(username2) == :ok
     assert ExBanking.deposit(username2, 0.0, "real") == {:ok, 0.0}
+
+    # assert ExBanking.deposit(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
   end
+
+  test "withdraw" do
+    username = "user withdraw"
+    amount = 100.1
+    currency = "real"
+
+    assert ExBanking.deposit("user that does not exist", amount, currency) == {:error, :user_does_not_exist}
+
+    assert ExBanking.create_user(username) == :ok
+    assert ExBanking.deposit(username, amount, currency) == {:ok, amount}
+    assert ExBanking.withdraw(username, 10.0, currency) == {:ok, 90.1}
+    assert ExBanking.withdraw(username, 15.0, currency) == {:ok, 75.1}
+    assert ExBanking.withdraw(username, 5.0, currency) == {:ok, 70.1}
+    assert ExBanking.withdraw(username, 10.0, currency) == {:ok, 60.1}
+
+    assert ExBanking.withdraw(1, 1000.0, currency) == {:error, :not_enough_money}
+
+
+    assert ExBanking.withdraw(1, 10.0, "real") == {:error, :wrong_arguments}
+    assert ExBanking.withdraw("danilo", 1, "real") == {:error, :wrong_arguments}
+    assert ExBanking.withdraw("danilo", "1", "real") == {:error, :wrong_arguments}
+    assert ExBanking.withdraw("danilo", -1.0, "real") == {:error, :wrong_arguments}
+    assert ExBanking.withdraw("danilo", 10.0, 1) == {:error, :wrong_arguments}
+
+    username = "user withdraw 2"
+    assert ExBanking.create_user(username2) == :ok
+    assert ExBanking.deposit(username2, 0.0, "real") == {:ok, 0.0}
+
+    # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
+  end
+
 end
