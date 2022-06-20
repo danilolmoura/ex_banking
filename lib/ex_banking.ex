@@ -59,21 +59,8 @@ defmodule ExBanking do
     end
   end
 
-  defp insert(table, user) do
-    case :ets.insert(table, {user}) do
-      true ->
-        true
-      error -> error
-    end
-  end
-
-  defp insert(table, user, currency, amount) do
-    case :ets.insert(table, {user, currency, amount}) do
-      true ->
-        true
-      error -> error
-    end
-  end
+  defp insert(table, user), do: :ets.insert(table, {user})
+  defp insert(table, user, currency, amount), do: :ets.insert(table, {user, currency, amount})
 
   def sum(enum) do
     enum
@@ -101,11 +88,8 @@ defmodule ExBanking do
       {:ok, _user} ->
         {:reply, :user_already_exists, {user_table, refs}}
       :error ->
-        case insert(user_table, user) do
-          true -> {:reply, :ok, {user_table, refs}}
-          _ -> IO.inspect("TODO: Check for some other errors")
-            {:reply, :error, {user_table, refs}}
-        end
+        insert(user_table, user)
+        {:reply, :ok, {user_table, refs}}
     end
   end
 
@@ -113,16 +97,12 @@ defmodule ExBanking do
   def handle_call({:deposit, user, amount, currency}, _from, {user_table, refs}) do
     case lookup(user_table, user) do
       {:ok, user} ->
-        case insert(user_table, user, currency, amount) do
-          true -> {:reply, {:ok, amount}, {user_table, refs}}
-          _ -> IO.inspect("TODO: Check for some other errors")
-        end
+        insert(user_table, user, currency, amount)
+        {:reply, {:ok, amount}, {user_table, refs}}
       {:ok, user, _, balance} ->
         new_balance = sum([balance, amount])
-        case insert(user_table, user, currency, new_balance) do
-          true -> {:reply, {:ok, new_balance}, {user_table, refs}}
-          _ -> IO.inspect("TODO: Check for some other errors")
-        end
+        insert(user_table, user, currency, new_balance)
+        {:reply, {:ok, new_balance}, {user_table, refs}}
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
     end
@@ -138,10 +118,8 @@ defmodule ExBanking do
           new_balance when new_balance < 0 ->
             {:reply, :not_enough_money, {user_table, refs}}
           new_balance ->
-            case insert(user_table, user, currency, new_balance) do
-              true -> {:reply, {:ok, new_balance}, {user_table, refs}}
-              _ -> IO.inspect("TODO: Check for some other errors")
-            end
+            insert(user_table, user, currency, new_balance)
+            {:reply, {:ok, new_balance}, {user_table, refs}}
         end
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
