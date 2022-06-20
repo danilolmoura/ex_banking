@@ -5,7 +5,7 @@ defmodule ExBanking do
 
   use GenServer
 
-  import Type, only: [validate_params: 1, validate_params: 3]
+  import Type, only: [validate_params: 1, validate_params: 2, validate_params: 3]
 
 
   ### Client API / Helper functions
@@ -50,6 +50,16 @@ defmodule ExBanking do
   end
 
   def withdraw(_, _, _), do: {:error, :wrong_arguments}
+
+  # @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+  # def get_balance(user, currency) when validate_params(user, currency) do
+  #   case GenServer.call(:user_lookup, {:get_balance, user, currency}) do
+  #     {:ok, new_balance} -> {:ok, new_balance}
+  #     :user_does_not_exist -> {:error, :user_does_not_exist}
+  #   end
+  # end
+
+  # def get_balance(_, _), do: {:error, :wrong_arguments}
 
   defp lookup(table, user) do
     case :ets.lookup(table, user) do
@@ -125,4 +135,14 @@ defmodule ExBanking do
         {:reply, :user_does_not_exist, {user_table, refs}}
     end
   end
+
+  # @impl true
+  # def handle_call({:get_balance, user, currency}, _from, {user_table, refs}) do
+  #   case lookup(user_table, user, currency) do
+  #     {:ok, _user, _, balance} ->
+  #       {:reply, {:ok, balance}, {user_table, refs}}
+  #     :error ->
+  #       {:reply, :user_does_not_exist, {user_table, refs}}
+  #   end
+  # end
 end
