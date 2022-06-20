@@ -42,8 +42,9 @@ defmodule ExBanking do
 
   @spec withdraw(user :: String.t, amount :: number, currency :: String.t) :: {:ok, new_balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :not_enough_money | :too_many_requests_to_user}
   def withdraw(user, amount, currency) when validate_params(user, amount, currency) do
-    case GenServer.call(:user_lookup, {:deposit, user, amount, currency}) do
+    case GenServer.call(:user_lookup, {:withdraw, user, amount, currency}) do
       {:ok, new_balance} -> {:ok, new_balance}
+      :not_enough_money -> {:error, :not_enough_money}
       :user_does_not_exist -> {:error, :user_does_not_exist}
     end
   end
@@ -77,6 +78,12 @@ defmodule ExBanking do
   def sum(enum) do
     enum
     |> Enum.sum()
+    |> Float.round(2)
+  end
+
+  def substract(balance, value) do
+    balance
+    |> Kernel.-(value)
     |> Float.round(2)
   end
 
@@ -115,6 +122,26 @@ defmodule ExBanking do
         case insert(user_table, user, currency, new_balance) do
           true -> {:reply, {:ok, new_balance}, {user_table, refs}}
           _ -> IO.inspect("TODO: Check for some other errors")
+        end
+      :error ->
+        {:reply, :user_does_not_exist, {user_table, refs}}
+    end
+  end
+
+  @impl true
+  def handle_call({:withdraw, user, amount, currency}, _from, {user_table, refs}) do
+    case lookup(user_table, user) do
+      {:ok, _user} ->
+        {:reply, :not_enough_money, {user_table, refs}}
+      {:ok, user, _, balance} ->
+        case substract(balance, amount) do
+          new_balance when new_balance < 0 ->
+            {:reply, :not_enough_money, {user_table, refs}}
+          new_balance ->
+            case insert(user_table, user, currency, new_balance) do
+              true -> {:reply, {:ok, new_balance}, {user_table, refs}}
+              _ -> IO.inspect("TODO: Check for some other errors")
+            end
         end
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}

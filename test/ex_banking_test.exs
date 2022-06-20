@@ -56,8 +56,7 @@ defmodule ExBankingTest do
     assert ExBanking.withdraw(username, 5.0, currency) == {:ok, 70.1}
     assert ExBanking.withdraw(username, 10.0, currency) == {:ok, 60.1}
 
-    assert ExBanking.withdraw(1, 1000.0, currency) == {:error, :not_enough_money}
-
+    assert ExBanking.withdraw(username, 1_200.0, currency) == {:error, :not_enough_money}
 
     assert ExBanking.withdraw(1, 10.0, "real") == {:error, :wrong_arguments}
     assert ExBanking.withdraw("danilo", 1, "real") == {:error, :wrong_arguments}
@@ -65,9 +64,13 @@ defmodule ExBankingTest do
     assert ExBanking.withdraw("danilo", -1.0, "real") == {:error, :wrong_arguments}
     assert ExBanking.withdraw("danilo", 10.0, 1) == {:error, :wrong_arguments}
 
-    username = "user withdraw 2"
+    username2 = "user withdraw 2"
     assert ExBanking.create_user(username2) == :ok
-    assert ExBanking.deposit(username2, 0.0, "real") == {:ok, 0.0}
+    assert ExBanking.withdraw(username2, 0.0, "real") == {:error, :not_enough_money}
+    assert ExBanking.deposit(username2, 100.0, "real") == {:ok, 100.0}
+    assert ExBanking.withdraw(username2, 100.0, "real") == {:ok, 0.0}
+    assert ExBanking.deposit(username2, 100.0, "real") == {:ok, 100.0}
+    assert ExBanking.withdraw(username2, 20.43, "real") == {:ok, 79.57}
 
     # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
   end
