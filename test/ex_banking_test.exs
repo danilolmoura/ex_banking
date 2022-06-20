@@ -75,4 +75,22 @@ defmodule ExBankingTest do
     # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
   end
 
+
+  test "balance" do
+    username = "user balance"
+    amount = 100.01
+    currency = "real"
+
+    assert ExBanking.balance("user that does not exist", currency) == {:error, :user_does_not_exist}
+
+    assert ExBanking.create_user(username) == :ok
+    assert ExBanking.deposit(username, amount, currency) == {:ok, amount}
+    assert ExBanking.balance(username, currency) == {:ok, 100.01}
+
+    assert ExBanking.balance(1, "real") == {:error, :wrong_arguments}
+    assert ExBanking.balance("danilo", 1) == {:error, :wrong_arguments}
+    assert ExBanking.balance("danilo",  :real) == {:error, :wrong_arguments}
+
+    # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
+  end
 end
