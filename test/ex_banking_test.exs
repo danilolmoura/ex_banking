@@ -137,13 +137,19 @@ defmodule ExBankingTest do
     assert ExBanking.send(from_username, to_username, 30.1, currency_real) == {:ok, 69.9, 30.1}
     assert ExBanking.send(from_username, to_username, 25.1, currency_euro) == {:ok, 74.9, 25.1}
 
-    assert ExBanking.send(to_username, from_username, 30.1, currency_real) == {:ok, 0.0, 100.0}
-    assert ExBanking.send(to_username, from_username, 20.0, currency_real) == {:ok, 5.1, 94.9}
+    assert ExBanking.send(to_username, from_username, 20.1, currency_real) == {:ok, 10.0, 90.0}
+    assert ExBanking.send(to_username, from_username, 5.0, currency_real) == {:ok, 5.0, 95.0}
 
-    ExBanking.send(1, to_username, amount, currency_real) == {:error, :wrong_arguments}
-    ExBanking.send(from_username, 1, amount, currency_real) == {:error, :wrong_arguments}
-    ExBanking.send(from_username, to_username, "10", currency_real) == {:error, :wrong_arguments}
-    ExBanking.send(from_username, to_username, amount, 4444) == {:error, :wrong_arguments}
+    assert ExBanking.get_balance(from_username, currency_real) == {:ok, 95.0}
+    assert ExBanking.get_balance(from_username, currency_euro) == {:ok, 74.9}
+
+    assert ExBanking.get_balance(to_username, currency_real) == {:ok, 5.0}
+    assert ExBanking.get_balance(to_username, currency_euro) == {:ok, 25.1}
+
+    assert ExBanking.send(1, to_username, amount, currency_real) == {:error, :wrong_arguments}
+    assert ExBanking.send(from_username, 1, amount, currency_real) == {:error, :wrong_arguments}
+    assert ExBanking.send(from_username, to_username, "10", currency_real) == {:error, :wrong_arguments}
+    assert ExBanking.send(from_username, to_username, amount, 4444) == {:error, :wrong_arguments}
 
     # assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :too_many_requests_to_sender}
     # assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :too_many_requests_to_receiver}

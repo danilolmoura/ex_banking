@@ -60,10 +60,29 @@ defmodule ExBanking do
 
   def get_balance(_, _), do: {:error, :wrong_arguments}
 
+  @spec send(from_user :: String.t, to_user :: String.t, amount :: number, currency :: String.t) :: {:ok, from_user_balance :: number, to_user_balance :: number} | {:error, :wrong_arguments | :not_enough_money | :sender_does_not_exist | :receiver_does_not_exist | :too_many_requests_to_sender | :too_many_requests_to_receiver}
+  def send(from_user, to_user, amount, currency) when validate_params(from_user, to_user, amount, currency) do
+    case GenServer.call(:user_lookup, {:send, from_user, to_user, amount, currency}) do
+      {:ok, from_user_balance, to_user_balance} -> {:ok, from_user_balance, to_user_balance}
+      :not_enough_money -> {:error, :not_enough_money}
+      :sender_does_not_exist -> {:error, :sender_does_not_exist}
+      :receiver_does_not_exist -> {:error, :receiver_does_not_exist}
+    end
+  end
+
+  def send(_, _, _, _), do: {:error, :wrong_arguments}
+
   defp lookup(table, user) do
     case :ets.lookup(table, user) do
       [{^user, %{} = wallet}] -> {:ok, user, wallet}
       [] -> :error
+    end
+  end
+
+  defp lookup(table, user, default_error) do
+    case lookup(table, user) do
+      {:ok, user, wallet} -> {:ok, user, wallet}
+      :error -> default_error
     end
   end
 
@@ -80,6 +99,36 @@ defmodule ExBanking do
     balance
     |> Kernel.-(value)
     |> Float.round(2)
+  end
+
+  def withdraw(user_table, user, wallet, currency, amount) do
+    case Enum.empty?(wallet) do
+      true -> {:error, :not_enough_money}
+      false ->
+        current_balance = Map.get(wallet, currency, 0)
+        case substract(current_balance, amount) do
+          new_balance when new_balance < 0 ->
+            {:error, :not_enough_money}
+          new_balance ->
+            insert(user_table, user, Map.put(wallet, currency, new_balance))
+            {:ok, new_balance}
+        end
+    end
+  end
+
+  def deposit(user_table, user, wallet, currency, amount) do
+    case Enum.empty?(wallet) do
+      true ->
+        insert(user_table, user, %{currency => amount})
+        {:ok, amount}
+      false ->
+        new_wallet =
+          wallet
+          |> Map.update(currency, amount, fn existing_value -> sum([existing_value, amount]) end)
+
+        insert(user_table, user, new_wallet)
+        {:ok, Map.get(new_wallet, currency)}
+    end
   end
 
   ### GenServer API
@@ -105,18 +154,7 @@ defmodule ExBanking do
   def handle_call({:deposit, user, amount, currency}, _from, {user_table, refs}) do
     case lookup(user_table, user) do
       {:ok, user, wallet} ->
-        case Enum.empty?(wallet) do
-          true ->
-            insert(user_table, user, %{currency => amount})
-            {:reply, {:ok, amount}, {user_table, refs}}
-          false ->
-            new_wallet =
-              wallet
-              |> Map.update(currency, amount, fn existing_value -> sum([existing_value, amount]) end)
-
-            insert(user_table, user, new_wallet)
-            {:reply, {:ok, Map.get(new_wallet, currency)}, {user_table, refs}}
-        end
+        {:reply, deposit(user_table, user, wallet, currency, amount), {user_table, refs}}
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
     end
@@ -124,23 +162,12 @@ defmodule ExBanking do
 
   @impl true
   def handle_call({:withdraw, user, amount, currency}, _from, {user_table, refs}) do
-    lookup(user_table, user)
-
     case lookup(user_table, user) do
       {:ok, user, wallet} ->
-        case Enum.empty?(wallet) do
-          true ->
+        case withdraw(user_table, user, wallet, currency, amount) do
+          {:error, :not_enough_money} ->
             {:reply, :not_enough_money, {user_table, refs}}
-          false ->
-            current_balance = Map.get(wallet, currency, 0)
-
-            case substract(current_balance, amount) do
-              new_balance when new_balance < 0 ->
-                {:reply, :not_enough_money, {user_table, refs}}
-              new_balance ->
-                insert(user_table, user, Map.put(wallet, currency, new_balance))
-                {:reply, {:ok, new_balance}, {user_table, refs}}
-            end
+          {:ok, new_balance} -> {:reply, {:ok, new_balance}, {user_table, refs}}
         end
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
@@ -156,25 +183,22 @@ defmodule ExBanking do
         {:reply, :user_does_not_exist, {user_table, refs}}
     end
   end
+
+  @impl true
+  def handle_call({:send, from_user, to_user, amount, currency}, _from, {user_table, refs}) do
+    with {:ok, from_user, from_user_wallet} <- lookup(user_table, from_user, :sender_does_not_exist),
+      {:ok, to_user, to_user_wallet} <- lookup(user_table, to_user, :receiver_does_not_exist),
+      {:ok, from_user_balance} <- withdraw(user_table, from_user, from_user_wallet, currency, amount),
+      {:ok, to_user_balance} <- deposit(user_table, to_user, to_user_wallet, currency, amount)
+      do
+        {:reply, {:ok, from_user_balance, to_user_balance}, {user_table, refs}}
+      else
+        {:error, :not_enough_money} ->
+          {:reply, :not_enough_money, {user_table, refs}}
+        :sender_does_not_exist ->
+          {:reply, :sender_does_not_exist, {user_table, refs}}
+        :receiver_does_not_exist ->
+          {:reply, :receiver_does_not_exist, {user_table, refs}}
+       end
+    end
 end
-
-
-# case lookup(user_table, user) do
-#   {:ok, user, wallet} ->
-#     case Enum.empty?(wallet) do
-#       true ->
-#         {:reply, :not_enough_money, {user_table, refs}}
-#       false ->
-#         current_balance = Map.get(wallet, currency, 0)
-
-#         case substract(current_balance, amount) do
-#           new_balance when new_balance < 0 ->
-#             {:reply, :not_enough_money, {user_table, refs}}
-#           new_balance ->
-#             insert(user_table, user, Map.put(wallet, currency, new_balance))
-#             {:reply, {:ok, new_balance}, {user_table, refs}}
-#         end
-#     end
-#   :error ->
-#     {:reply, :user_does_not_exist, {user_table, refs}}
-# end
