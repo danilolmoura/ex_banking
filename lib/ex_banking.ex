@@ -5,8 +5,7 @@ defmodule ExBanking do
 
   use GenServer
 
-  import Type, only: [validate_params: 1, validate_params: 3]
-
+  import Type
 
   ### Client API / Helper functions
 
@@ -51,15 +50,15 @@ defmodule ExBanking do
 
   def withdraw(_, _, _), do: {:error, :wrong_arguments}
 
-  # @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
-  # def get_balance(user, currency) when validate_params(user, currency) do
-  #   case GenServer.call(:user_lookup, {:get_balance, user, currency}) do
-  #     {:ok, new_balance} -> {:ok, new_balance}
-  #     :user_does_not_exist -> {:error, :user_does_not_exist}
-  #   end
-  # end
+  @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+  def get_balance(user, currency) when validate_params(user, currency) do
+    case GenServer.call(:user_lookup, {:get_balance, user, currency}) do
+      {:ok, new_balance} -> {:ok, new_balance}
+      :user_does_not_exist -> {:error, :user_does_not_exist}
+    end
+  end
 
-  # def get_balance(_, _), do: {:error, :wrong_arguments}
+  def get_balance(_, _), do: {:error, :wrong_arguments}
 
   defp lookup(table, user) do
     case :ets.lookup(table, user) do
@@ -128,7 +127,6 @@ defmodule ExBanking do
     lookup(user_table, user)
 
     case lookup(user_table, user) do
-
       {:ok, user, wallet} ->
         case Enum.empty?(wallet) do
           true ->
@@ -144,19 +142,39 @@ defmodule ExBanking do
                 {:reply, {:ok, new_balance}, {user_table, refs}}
             end
         end
-
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
     end
   end
 
-  # @impl true
-  # def handle_call({:get_balance, user, currency}, _from, {user_table, refs}) do
-  #   case lookup(user_table, user, currency) do
-  #     {:ok, _user, _, balance} ->
-  #       {:reply, {:ok, balance}, {user_table, refs}}
-  #     :error ->
-  #       {:reply, :user_does_not_exist, {user_table, refs}}
-  #   end
-  # end
+  @impl true
+  def handle_call({:get_balance, user, currency}, _from, {user_table, refs}) do
+    case lookup(user_table, user) do
+      {:ok, _user, wallet} ->
+        {:reply, {:ok, Map.get(wallet, currency, 0.0)}, {user_table, refs}}
+      :error ->
+        {:reply, :user_does_not_exist, {user_table, refs}}
+    end
+  end
 end
+
+
+# case lookup(user_table, user) do
+#   {:ok, user, wallet} ->
+#     case Enum.empty?(wallet) do
+#       true ->
+#         {:reply, :not_enough_money, {user_table, refs}}
+#       false ->
+#         current_balance = Map.get(wallet, currency, 0)
+
+#         case substract(current_balance, amount) do
+#           new_balance when new_balance < 0 ->
+#             {:reply, :not_enough_money, {user_table, refs}}
+#           new_balance ->
+#             insert(user_table, user, Map.put(wallet, currency, new_balance))
+#             {:reply, {:ok, new_balance}, {user_table, refs}}
+#         end
+#     end
+#   :error ->
+#     {:reply, :user_does_not_exist, {user_table, refs}}
+# end

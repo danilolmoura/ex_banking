@@ -95,24 +95,26 @@ defmodule ExBankingTest do
   end
 
 
-  # test "get_balance" do
-  #   username = "user get_balance"
-  #   amount = 100.01
-  #   currency = "real"
+  test "get_balance" do
+    username = "user get_balance"
+    amount = 100.01
+    currency_real = "real"
+    currency_euro = "euro"
 
-  #   assert ExBanking.get_balance("user that does not exist", currency) == {:error, :user_does_not_exist}
+    assert ExBanking.get_balance("user that does not exist", currency_real) == {:error, :user_does_not_exist}
 
-  #   assert ExBanking.create_user(username) == :ok
-  #   assert ExBanking.deposit(username, amount, currency) == {:ok, amount}
-  #   assert ExBanking.get_balance(username, currency) == {:ok, amount}
-  #   assert ExBanking.deposit(username, amount, "euro") == {:ok, amount}
-  #   assert ExBanking.get_balance(username, "euro") == {:ok, amount}
-  #   assert ExBanking.get_balance(username, currency) == {:ok, 100.01}
+    assert ExBanking.create_user(username) == :ok
+    assert ExBanking.deposit(username, amount, currency_real) == {:ok, amount}
+    assert ExBanking.get_balance(username, currency_real) == {:ok, 100.01}
+    assert ExBanking.deposit(username, amount, currency_euro) == {:ok, amount}
+    assert ExBanking.get_balance(username, currency_euro) == {:ok, 100.01}
 
-  #   assert ExBanking.get_balance(1, "real") == {:error, :wrong_arguments}
-  #   assert ExBanking.get_balance("danilo", 1) == {:error, :wrong_arguments}
-  #   assert ExBanking.get_balance("danilo",  :real) == {:error, :wrong_arguments}
+    assert ExBanking.get_balance(username, "bitcoin") == {:ok, 0.0}
 
-  #   # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
-  # end
+    assert ExBanking.get_balance(1, "real") == {:error, :wrong_arguments}
+    assert ExBanking.get_balance("danilo", 1) == {:error, :wrong_arguments}
+    assert ExBanking.get_balance("danilo",  :real) == {:error, :wrong_arguments}
+
+    # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
+  end
 end
