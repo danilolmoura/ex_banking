@@ -94,7 +94,6 @@ defmodule ExBankingTest do
     # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
   end
 
-
   test "get_balance" do
     username = "user get_balance"
     amount = 100.01
@@ -116,5 +115,37 @@ defmodule ExBankingTest do
     assert ExBanking.get_balance("danilo",  :real) == {:error, :wrong_arguments}
 
     # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
+  end
+
+  test "send" do
+    from_username = "from user"
+    to_username = "to user"
+    amount = 100.0
+    currency_real = "real"
+    currency_euro = "euro"
+
+    assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :sender_does_not_exist}
+    assert ExBanking.create_user(from_username) == :ok
+    assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :receiver_does_not_exist}
+    assert ExBanking.create_user(to_username) == :ok
+
+    assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :not_enough_money}
+    assert ExBanking.send(from_username, to_username, amount, currency_euro) == {:error, :not_enough_money}
+
+    assert ExBanking.deposit(from_username, amount, currency_real)
+    assert ExBanking.deposit(from_username, amount, currency_euro)
+    assert ExBanking.send(from_username, to_username, 30.1, currency_real) == {:ok, 69.9, 30.1}
+    assert ExBanking.send(from_username, to_username, 25.1, currency_euro) == {:ok, 74.9, 25.1}
+
+    assert ExBanking.send(to_username, from_username, 30.1, currency_real) == {:ok, 0.0, 100.0}
+    assert ExBanking.send(to_username, from_username, 20.0, currency_real) == {:ok, 5.1, 94.9}
+
+    ExBanking.send(1, to_username, amount, currency_real) == {:error, :wrong_arguments}
+    ExBanking.send(from_username, 1, amount, currency_real) == {:error, :wrong_arguments}
+    ExBanking.send(from_username, to_username, "10", currency_real) == {:error, :wrong_arguments}
+    ExBanking.send(from_username, to_username, amount, 4444) == {:error, :wrong_arguments}
+
+    # assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :too_many_requests_to_sender}
+    # assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :too_many_requests_to_receiver}
   end
 end
