@@ -22,7 +22,8 @@ defmodule ExBankingTest do
     currency_real = "real"
     currency_euro = "euro"
 
-    assert ExBanking.deposit("user that does not exist", amount, currency_real) == {:error, :user_does_not_exist}
+    assert ExBanking.deposit("user that does not exist", amount, currency_real) ==
+             {:error, :user_does_not_exist}
 
     assert ExBanking.create_user(username) == :ok
     assert ExBanking.deposit(username, amount, currency_real) == {:ok, 100.01}
@@ -55,7 +56,8 @@ defmodule ExBankingTest do
     currency_real = "real"
     currency_euro = "euro"
 
-    assert ExBanking.deposit("user that does not exist", amount, currency_real) == {:error, :user_does_not_exist}
+    assert ExBanking.deposit("user that does not exist", amount, currency_real) ==
+             {:error, :user_does_not_exist}
 
     assert ExBanking.create_user(username) == :ok
     assert ExBanking.deposit(username, amount, currency_real) == {:ok, amount}
@@ -100,7 +102,8 @@ defmodule ExBankingTest do
     currency_real = "real"
     currency_euro = "euro"
 
-    assert ExBanking.get_balance("user that does not exist", currency_real) == {:error, :user_does_not_exist}
+    assert ExBanking.get_balance("user that does not exist", currency_real) ==
+             {:error, :user_does_not_exist}
 
     assert ExBanking.create_user(username) == :ok
     assert ExBanking.deposit(username, amount, currency_real) == {:ok, amount}
@@ -112,7 +115,7 @@ defmodule ExBankingTest do
 
     assert ExBanking.get_balance(1, "real") == {:error, :wrong_arguments}
     assert ExBanking.get_balance("danilo", 1) == {:error, :wrong_arguments}
-    assert ExBanking.get_balance("danilo",  :real) == {:error, :wrong_arguments}
+    assert ExBanking.get_balance("danilo", :real) == {:error, :wrong_arguments}
 
     # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
   end
@@ -124,13 +127,21 @@ defmodule ExBankingTest do
     currency_real = "real"
     currency_euro = "euro"
 
-    assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :sender_does_not_exist}
+    assert ExBanking.send(from_username, to_username, amount, currency_real) ==
+             {:error, :sender_does_not_exist}
+
     assert ExBanking.create_user(from_username) == :ok
-    assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :receiver_does_not_exist}
+
+    assert ExBanking.send(from_username, to_username, amount, currency_real) ==
+             {:error, :receiver_does_not_exist}
+
     assert ExBanking.create_user(to_username) == :ok
 
-    assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :not_enough_money}
-    assert ExBanking.send(from_username, to_username, amount, currency_euro) == {:error, :not_enough_money}
+    assert ExBanking.send(from_username, to_username, amount, currency_real) ==
+             {:error, :not_enough_money}
+
+    assert ExBanking.send(from_username, to_username, amount, currency_euro) ==
+             {:error, :not_enough_money}
 
     assert ExBanking.deposit(from_username, amount, currency_real)
     assert ExBanking.deposit(from_username, amount, currency_euro)
@@ -148,7 +159,10 @@ defmodule ExBankingTest do
 
     assert ExBanking.send(1, to_username, amount, currency_real) == {:error, :wrong_arguments}
     assert ExBanking.send(from_username, 1, amount, currency_real) == {:error, :wrong_arguments}
-    assert ExBanking.send(from_username, to_username, "10", currency_real) == {:error, :wrong_arguments}
+
+    assert ExBanking.send(from_username, to_username, "10", currency_real) ==
+             {:error, :wrong_arguments}
+
     assert ExBanking.send(from_username, to_username, amount, 4444) == {:error, :wrong_arguments}
 
     # assert ExBanking.send(from_username, to_username, amount, currency_real) == {:error, :too_many_requests_to_sender}
