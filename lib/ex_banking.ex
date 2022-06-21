@@ -5,7 +5,7 @@ defmodule ExBanking do
 
   use GenServer
 
-  import Type, only: [validate_params: 1, validate_params: 2, validate_params: 3]
+  import Type, only: [validate_params: 1, validate_params: 3]
 
 
   ### Client API / Helper functions
@@ -63,14 +63,13 @@ defmodule ExBanking do
 
   defp lookup(table, user) do
     case :ets.lookup(table, user) do
-      [{^user}] -> {:ok, user}
-      [{^user, currency, amount}] -> {:ok, user, currency, amount}
+      [{^user, %{} = wallet}] -> {:ok, user, wallet}
       [] -> :error
     end
   end
 
-  defp insert(table, user), do: :ets.insert(table, {user})
-  defp insert(table, user, currency, amount), do: :ets.insert(table, {user, currency, amount})
+  defp insert(table, user), do: insert(table, user, %{})
+  defp insert(table, user, wallet), do: :ets.insert(table, {user, wallet})
 
   def sum(enum) do
     enum
@@ -95,7 +94,7 @@ defmodule ExBanking do
   @impl true
   def handle_call({:create_user, user}, _from, {user_table, refs}) do
     case lookup(user_table, user) do
-      {:ok, _user} ->
+      {:ok, _user, _wallet} ->
         {:reply, :user_already_exists, {user_table, refs}}
       :error ->
         insert(user_table, user)
@@ -106,13 +105,19 @@ defmodule ExBanking do
   @impl true
   def handle_call({:deposit, user, amount, currency}, _from, {user_table, refs}) do
     case lookup(user_table, user) do
-      {:ok, user} ->
-        insert(user_table, user, currency, amount)
-        {:reply, {:ok, amount}, {user_table, refs}}
-      {:ok, user, _, balance} ->
-        new_balance = sum([balance, amount])
-        insert(user_table, user, currency, new_balance)
-        {:reply, {:ok, new_balance}, {user_table, refs}}
+      {:ok, user, wallet} ->
+        case Enum.empty?(wallet) do
+          true ->
+            insert(user_table, user, %{currency => amount})
+            {:reply, {:ok, amount}, {user_table, refs}}
+          false ->
+            new_wallet =
+              wallet
+              |> Map.update(currency, amount, fn existing_value -> sum([existing_value, amount]) end)
+
+            insert(user_table, user, new_wallet)
+            {:reply, {:ok, Map.get(new_wallet, currency)}, {user_table, refs}}
+        end
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
     end
@@ -120,17 +125,26 @@ defmodule ExBanking do
 
   @impl true
   def handle_call({:withdraw, user, amount, currency}, _from, {user_table, refs}) do
+    lookup(user_table, user)
+
     case lookup(user_table, user) do
-      {:ok, _user} ->
-        {:reply, :not_enough_money, {user_table, refs}}
-      {:ok, user, _, balance} ->
-        case substract(balance, amount) do
-          new_balance when new_balance < 0 ->
+
+      {:ok, user, wallet} ->
+        case Enum.empty?(wallet) do
+          true ->
             {:reply, :not_enough_money, {user_table, refs}}
-          new_balance ->
-            insert(user_table, user, currency, new_balance)
-            {:reply, {:ok, new_balance}, {user_table, refs}}
+          false ->
+            current_balance = Map.get(wallet, currency, 0)
+
+            case substract(current_balance, amount) do
+              new_balance when new_balance < 0 ->
+                {:reply, :not_enough_money, {user_table, refs}}
+              new_balance ->
+                insert(user_table, user, Map.put(wallet, currency, new_balance))
+                {:reply, {:ok, new_balance}, {user_table, refs}}
+            end
         end
+
       :error ->
         {:reply, :user_does_not_exist, {user_table, refs}}
     end

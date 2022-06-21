@@ -19,15 +19,22 @@ defmodule ExBankingTest do
   test "deposit" do
     username = "user deposit"
     amount = 100.01
-    currency = "real"
+    currency_real = "real"
+    currency_euro = "euro"
 
-    assert ExBanking.deposit("user that does not exist", amount, currency) == {:error, :user_does_not_exist}
+    assert ExBanking.deposit("user that does not exist", amount, currency_real) == {:error, :user_does_not_exist}
 
     assert ExBanking.create_user(username) == :ok
-    assert ExBanking.deposit(username, amount, currency) == {:ok, 100.01}
-    assert ExBanking.deposit(username, 25.1, currency) == {:ok, 125.11}
-    assert ExBanking.deposit(username, 22.32, currency) == {:ok, 147.43}
-    assert ExBanking.deposit(username, 25.55, currency) == {:ok, 172.98}
+    assert ExBanking.deposit(username, amount, currency_real) == {:ok, 100.01}
+    assert ExBanking.deposit(username, 25.1, currency_real) == {:ok, 125.11}
+    assert ExBanking.deposit(username, 22.32, currency_real) == {:ok, 147.43}
+    assert ExBanking.deposit(username, 25.55, currency_real) == {:ok, 172.98}
+
+    assert ExBanking.deposit(username, 25.55, currency_euro) == {:ok, 25.55}
+    assert ExBanking.deposit(username, 25.55, currency_euro) == {:ok, 51.10}
+
+    assert ExBanking.deposit(username, 10.0, currency_real) == {:ok, 182.98}
+    assert ExBanking.deposit(username, 10.0, currency_euro) == {:ok, 61.10}
 
     assert ExBanking.deposit(1, 10.0, "real") == {:error, :wrong_arguments}
     assert ExBanking.deposit("danilo", 1, "real") == {:error, :wrong_arguments}
@@ -45,18 +52,30 @@ defmodule ExBankingTest do
   test "withdraw" do
     username = "user withdraw"
     amount = 100.1
-    currency = "real"
+    currency_real = "real"
+    currency_euro = "euro"
 
-    assert ExBanking.deposit("user that does not exist", amount, currency) == {:error, :user_does_not_exist}
+    assert ExBanking.deposit("user that does not exist", amount, currency_real) == {:error, :user_does_not_exist}
 
     assert ExBanking.create_user(username) == :ok
-    assert ExBanking.deposit(username, amount, currency) == {:ok, amount}
-    assert ExBanking.withdraw(username, 10.0, currency) == {:ok, 90.1}
-    assert ExBanking.withdraw(username, 15.0, currency) == {:ok, 75.1}
-    assert ExBanking.withdraw(username, 5.0, currency) == {:ok, 70.1}
-    assert ExBanking.withdraw(username, 10.0, currency) == {:ok, 60.1}
+    assert ExBanking.deposit(username, amount, currency_real) == {:ok, amount}
+    assert ExBanking.withdraw(username, 10.0, currency_real) == {:ok, 90.1}
+    assert ExBanking.withdraw(username, 15.0, currency_real) == {:ok, 75.1}
+    assert ExBanking.withdraw(username, 5.0, currency_real) == {:ok, 70.1}
+    assert ExBanking.withdraw(username, 10.1, currency_real) == {:ok, 60.0}
 
-    assert ExBanking.withdraw(username, 1_200.0, currency) == {:error, :not_enough_money}
+    assert ExBanking.withdraw(username, 1_200.0, currency_real) == {:error, :not_enough_money}
+
+    assert ExBanking.deposit(username, amount, currency_euro) == {:ok, amount}
+    assert ExBanking.withdraw(username, 30.1, currency_euro) == {:ok, 70.0}
+    assert ExBanking.withdraw(username, 30.0, currency_euro) == {:ok, 40.0}
+
+    assert ExBanking.withdraw(username, 200_200.0, currency_euro) == {:error, :not_enough_money}
+
+    assert ExBanking.withdraw(username, 5.0, currency_real) == {:ok, 55.0}
+    assert ExBanking.withdraw(username, 5.0, currency_euro) == {:ok, 35.0}
+    assert ExBanking.withdraw(username, 5.0, currency_real) == {:ok, 50.0}
+    assert ExBanking.withdraw(username, 5.0, currency_euro) == {:ok, 30.0}
 
     assert ExBanking.withdraw(1, 10.0, "real") == {:error, :wrong_arguments}
     assert ExBanking.withdraw("danilo", 1, "real") == {:error, :wrong_arguments}
@@ -94,6 +113,6 @@ defmodule ExBankingTest do
   #   assert ExBanking.get_balance("danilo", 1) == {:error, :wrong_arguments}
   #   assert ExBanking.get_balance("danilo",  :real) == {:error, :wrong_arguments}
 
-  #   assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
+  #   # assert ExBanking.withdraw(username2, 10.0, "real") == {:error, :too_many_requests_to_user}
   # end
 end
